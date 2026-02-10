@@ -3,7 +3,10 @@
   <head>
     <meta charset="utf-8" />
     <title>Passing Through</title>
-    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
     <meta name="theme-color" content="#020617" />
     <link rel="icon" href="favicon.ico" sizes="any" />
     <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
@@ -49,7 +52,7 @@
       .canvas-wrapper {
         position: relative;
         aspect-ratio: 9 / 16;
-        width: min(calc(100vw), calc((100vh - 90px) * 9 / 16));
+        width: min(calc(100vw - 24px), calc((100vh - 90px) * 9 / 16));
         border-radius: 1.5rem;
         overflow: hidden;
         box-shadow: 0 25px 50px rgba(0, 0, 0, 0.9);
@@ -667,7 +670,7 @@
       function reseed() {
         loopOrigin = performance.now(); // start loop on a clean boundary
         startAnimation(true);
-        setStatus("Reseeded • Tap canvas to reseed • Space = pause • S = screenshot • S = screenshot");
+        // setStatus("Reseeded • Tap canvas to reseed • Space = pause • S = screenshot • S = screenshot");
       }
 
       function togglePause() {
@@ -676,7 +679,7 @@
           lastT = performance.now();
           startAnimation(false);
         }
-        setStatus(isPaused ? "Paused • Space = play" : "Playing • Space = pause");
+        // setStatus(isPaused ? "Paused • Space = play" : "Playing • Space = pause");
       }
 
       // ---------------------------
@@ -693,9 +696,9 @@
       // const btnDownload = document.getElementById("btnDownload");
       // const statusEl = document.getElementById("status");
 
-      function setStatus(msg) {
-        statusEl.textContent = msg;
-      }
+      // function setStatus(msg) {
+      //   statusEl.textContent = msg;
+      // }
 
       function pickBestMimeType() {
         const candidates = [
@@ -736,12 +739,12 @@
           videoBitsPerSecond: 12_000_000 // ✅ higher = cleaner gradients
         };
 
-        try {
-          mediaRecorder = new MediaRecorder(stream, opts);
-        } catch (err) {
-          setStatus("Recording failed (MediaRecorder not supported in this browser).");
-          return;
-        }
+        // try {
+        //   mediaRecorder = new MediaRecorder(stream, opts);
+        // } catch (err) {
+        //   setStatus("Recording failed (MediaRecorder not supported in this browser).");
+        //   return;
+        // }
 
         mediaRecorder.ondataavailable = (e) => {
           if (e.data && e.data.size > 0) recordedChunks.push(e.data);
@@ -753,7 +756,7 @@
           btnDownload.href = url;
           btnDownload.download = `holo-blocks-${getPaletteSlug()}-${REC_W}x${REC_H}-${Date.now()}.webm`;
           btnDownload.style.display = "inline-flex";
-          setStatus("Done • Download video");
+          // setStatus("Done • Download video");
         };
 
         mediaRecorder.start();
@@ -763,7 +766,7 @@
         // btnStop.disabled = false;
         // btnReseed.disabled = true;
 
-        setStatus("Recording… (18s) rendering at 1080×1920");
+        // setStatus("Recording… (18s) rendering at 1080×1920");
 
         stopTimer = setTimeout(() => {
           stopRecording();
@@ -780,11 +783,11 @@
         // btnStop.disabled = true;
         // btnReseed.disabled = false;
 
-        try {
-          mediaRecorder.stop();
-        } catch (e) {
-          setStatus("Stopped");
-        }
+        // try {
+        //   mediaRecorder.stop();
+        // } catch (e) {
+        //   setStatus("Stopped");
+        // }
       }
 
             // ---------------------------
@@ -819,7 +822,7 @@
           a.click();
           a.remove();
           setTimeout(() => URL.revokeObjectURL(url), 2000);
-          setStatus(`Saved PNG • ${shotW}×${shotH}`);
+          // setStatus(`Saved PNG • ${shotW}×${shotH}`);
         }, "image/png");
       }
 
