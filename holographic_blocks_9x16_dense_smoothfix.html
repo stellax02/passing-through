@@ -2,9 +2,13 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>Kinetic Canvas - Holo Blocks (9:16 Loop Recorder)</title>
+    <title>Passing Through</title>
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
     <meta name="theme-color" content="#020617" />
+    <link rel="icon" href="favicon.ico" sizes="any" />
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png" />
     <style>
       :root { color-scheme: dark; }
 
@@ -33,8 +37,8 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 0;
-        padding: 0;
+        gap: 12px;
+        padding: 12px;
         width: 100%;
         height: 100%;
         box-sizing: border-box;
@@ -45,8 +49,11 @@
       .canvas-wrapper {
         position: relative;
         aspect-ratio: 9 / 16;
-        width: min(calc(100vw), calc((100vh) * 9 / 16));
+        width: min(calc(100vw - 24px), calc((100vh - 24px - 120px) * 9 / 16));
+        border-radius: 1.5rem;
         overflow: hidden;
+        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.9);
+        border: 1px solid rgba(168, 85, 247, 0.28);
         background: #020617;
       }
 
@@ -54,7 +61,7 @@
         display: block;
         width: 100%;
         height: 100%;
-        background: #000;
+        background: #020617;
       }
 
       .title-pill {
@@ -136,14 +143,14 @@
         <canvas id="field"></canvas>
       </div>
 
-      <!-- <div class="title-pill" id="title-pill" aria-live="polite">
+      <div class="title-pill" id="title-pill" aria-live="polite">
         <span class="palette-swatch" id="palette-swatch"></span>
         <span class="title-text" id="title-text">Holo Blocks • Palette</span>
-      </div> -->
+      </div>
 
       <!-- <div class="controls" aria-label="Controls">
         <button class="btn" id="btnReseed" title="Reseed palette + layout (or tap the canvas)">Reseed</button>
-        <button class="btn" id="btnRecord" title="Records a 60s WebM at 1080×1920">Record 18s Loop</button>
+        <button class="btn" id="btnRecord" title="Records a perfect 18s looping WebM at 1080×1920">Record 18s Loop</button>
         <button class="btn" id="btnStop" disabled>Stop</button>
         <a class="btn" id="btnDownload" style="display:none" download>Download video</a>
         <span class="status" id="status">Tap canvas to reseed • Space = pause • S = screenshot</span>
@@ -237,50 +244,6 @@
 
       let bgHue = 220, bgSat = 26, bgLight = 7;
 
-      // Smooth background transitions (palette shifts without pops)
-      let bgHueT = bgHue, bgSatT = bgSat, bgLightT = bgLight;
-
-      function lerp(a, b, t) { return a + (b - a) * t; }
-      function lerpHue(a, b, t) {
-        // shortest-path hue interpolation
-        let d = ((b - a + 540) % 360) - 180;
-        return (a + d * t + 360) % 360;
-      }
-      function smoothstep(edge0, edge1, x) {
-        const t = clamp((x - edge0) / (edge1 - edge0), 0, 1);
-        return t * t * (3 - 2 * t);
-      }
-
-
-      function computeBackgroundFromPalette(mode) {
-        const hsls = PALETTE_HSL[mode] || PALETTE_HSL[0];
-        let darkest = hsls[0];
-        for (const c of hsls) if (c.l < darkest.l) darkest = c;
-
-        let h = darkest.h;
-        let s = clamp(darkest.s * 0.55, 10, 36);
-        let l = clamp(darkest.l * 0.28, 3, 10);
-
-        h = (h + (Math.random() * 22 - 11) + 360) % 360;
-        s = clamp(s + (Math.random() * 8 - 4), 8, 40);
-        l = clamp(l + (Math.random() * 2 - 1), 2.6, 11);
-
-        return { h, s, l };
-      }
-
-      function setBackgroundTargetFromPalette(mode = paletteMode) {
-        const o = computeBackgroundFromPalette(mode);
-        bgHueT = o.h; bgSatT = o.s; bgLightT = o.l;
-      }
-
-      function tickBackground(dt) {
-        // ease towards target smoothly
-        const k = clamp(dt * 0.85, 0, 1);
-        bgHue = lerpHue(bgHue, bgHueT, k);
-        bgSat = lerp(bgSat, bgSatT, k);
-        bgLight = lerp(bgLight, bgLightT, k);
-      }
-
       function getPaletteSlug() { return PALETTES[paletteMode]?.slug || `palette-${paletteMode}`; }
       function getPaletteName() { return PALETTES[paletteMode]?.name || `Palette ${paletteMode}`; }
 
@@ -319,8 +282,6 @@
         bgHue = (bgHue + (Math.random() * 22 - 11) + 360) % 360;
         bgSat = clamp(bgSat + (Math.random() * 8 - 4), 8, 40);
         bgLight = clamp(bgLight + (Math.random() * 2 - 1), 2.6, 11);
-
-        bgHueT = bgHue; bgSatT = bgSat; bgLightT = bgLight;
       }
 
       function applyPaletteMode(mode) {
@@ -363,108 +324,12 @@
         return arr[arr.length - 1];
       }
 
-
-
-
-      // ---------------------------
-      // Palette shifting without changing movement:
-      // only NEWLY wrapping blocks adopt the new palette, with a short color crossfade.
-      // ---------------------------
-      function expandedColorFromPalette() {
-        const c = pickPaletteColorHsl();
-        const big = Math.random() < 0.22;
-        const shift = big ? (Math.random() * 140 - 70) : (Math.random() * 70 - 35);
-        const hue = (c.h + shift + 360) % 360;
-        const sat = clamp(c.s + (Math.random() * 26 - 8), 12, 100);
-        const lit = clamp(c.l + (Math.random() * 24 - 10), 6, 94);
-        return { hue, sat, lit };
+      function updateTitlePill() {
+        const textEl = document.getElementById("title-text");
+        const swatchEl = document.getElementById("palette-swatch");
+        textEl.textContent = `Holo Blocks • ${getPaletteName()}`;
+        swatchEl.style.background = pickPaletteAccentHex();
       }
-
-      function beginBlockColorTransition(b) {
-        const col = expandedColorFromPalette();
-        b.hueFrom = b.hue; b.satFrom = b.sat; b.litFrom = b.lit;
-        b.hueTo = col.hue; b.satTo = col.sat; b.litTo = col.lit;
-        b.colorMix = 0;
-      }
-
-      function currentBlockColor(b) {
-        if (b.colorMix == null || b.colorMix >= 1 || b.hueTo == null) {
-          return { hue: b.hue, sat: b.sat, lit: b.lit };
-        }
-        const t = b.colorMix;
-        return {
-          hue: lerpHue(b.hueFrom, b.hueTo, t),
-          sat: lerp(b.satFrom, b.satTo, t),
-          lit: lerp(b.litFrom, b.litTo, t)
-        };
-      }
-
-      // ---------------------------
-// Palette "show" timeline (for exhibitions):
-// We cycle through a playlist of palettes over ~1 minute.
-// Movement stays unchanged; only colors/background evolve smoothly.
-//
-// - PALETTE_SHOW_SECONDS: total time to traverse the playlist once
-// - PALETTE_PLAYLIST: set to an array of palette indices to curate "best" ones,
-//   or leave null to include all palettes in order.
-// - PALETTE_RECOLOR_FRACTION: fraction of on-screen blocks that begin a smooth
-//   color transition immediately on palette change (rest update on wrap).
-// ---------------------------
-const PALETTE_SHOW_SECONDS = 60; // one full palette tour
-const PALETTE_PLAYLIST = null;  // e.g. [1,4,6,7,9,11,13,14,18,19,22,23]
-const PALETTE_RECOLOR_FRACTION = 0.35;
-
-let palettePlaylist = [];
-let paletteClockOrigin = performance.now();
-let paletteSegSeconds = 3;
-
-function buildPalettePlaylist() {
-  if (Array.isArray(PALETTE_PLAYLIST) && PALETTE_PLAYLIST.length > 0) {
-    palettePlaylist = PALETTE_PLAYLIST
-      .map((i) => clamp(i | 0, 0, PALETTES.length - 1))
-      .filter((v, idx, arr) => arr.indexOf(v) === idx);
-  } else {
-    palettePlaylist = Array.from({ length: PALETTES.length }, (_, i) => i);
-  }
-  paletteSegSeconds = Math.max(0.8, PALETTE_SHOW_SECONDS / Math.max(1, palettePlaylist.length));
-}
-
-function rotatePlaylistTo(mode) {
-  if (!palettePlaylist.length) return;
-  const idx = palettePlaylist.indexOf(mode);
-  if (idx > 0) palettePlaylist = palettePlaylist.slice(idx).concat(palettePlaylist.slice(0, idx));
-}
-
-function setPaletteModeSoft(mode) {
-  const m = clamp(mode | 0, 0, PALETTES.length - 1);
-  if (m === paletteMode) return;
-  paletteMode = m;
-  lastPaletteMode = m;
-  setBackgroundTargetFromPalette(m);
-}
-
-function triggerRecolorBurst() {
-  if (!blocks || blocks.length === 0) return;
-  const n = Math.max(1, Math.floor(blocks.length * clamp(PALETTE_RECOLOR_FRACTION, 0, 1)));
-  for (let i = 0; i < n; i++) {
-    const b = blocks[(Math.random() * blocks.length) | 0];
-    if (!b) continue;
-    beginBlockColorTransition(b);
-  }
-}
-
-function updatePaletteTimeline(nowMs) {
-  if (!palettePlaylist.length) buildPalettePlaylist();
-
-  const elapsed = (nowMs - paletteClockOrigin) / 1000;
-  const idx = Math.floor(elapsed / paletteSegSeconds) % palettePlaylist.length;
-  const mode = palettePlaylist[idx];
-
-  if (mode !== paletteMode) {
-    setPaletteModeSoft(mode);
-    triggerRecolorBurst();
-  }
-}
 
       function updateSeedInUrl() {
         const paletteSlug = getPaletteSlug();
@@ -491,43 +356,7 @@ function updatePaletteTimeline(nowMs) {
       // Blocks simulation (deterministic loop)
       // ---------------------------
       const LOOP_SECONDS = 18; // ✅ 15–20s, and loops perfectly
-      const RECORD_SECONDS = 60; // exhibition cut length
       const BLOCK_COUNT = 96;
-      // ---------------------------
-      // Momentary "super sharp" pulses (no movement change)
-      // ---------------------------
-      const SHARP_PULSE_ENABLED = true;
-      const SHARP_PULSE_MIN_SEC = 2.6;
-      const SHARP_PULSE_MAX_SEC = 4.2;
-      const SHARP_PULSE_MIN_COUNT = 1;
-      const SHARP_PULSE_MAX_COUNT = 3;
-      const SHARP_PULSE_DUR_SEC = 0.55;
-
-      let nextSharpAtSec = (performance.now() / 1000) + 1.2;
-
-      function scheduleNextSharp(nowSec) {
-        nextSharpAtSec = nowSec + lerp(SHARP_PULSE_MIN_SEC, SHARP_PULSE_MAX_SEC, Math.random());
-      }
-
-      function triggerSharpPulse() {
-        const n = SHARP_PULSE_MIN_COUNT + ((Math.random() * (SHARP_PULSE_MAX_COUNT - SHARP_PULSE_MIN_COUNT + 1)) | 0);
-        for (let k = 0; k < n; k++) {
-          const b = blocks[(Math.random() * blocks.length) | 0];
-          if (!b) continue;
-          b.sharpAge = 0;
-          b.sharpDur = SHARP_PULSE_DUR_SEC * (0.75 + Math.random() * 0.6);
-          b.sharpStrength = 0.85 + Math.random() * 0.35;
-        }
-      }
-
-      function tickSharpPulses(nowSec) {
-        if (!SHARP_PULSE_ENABLED || blocks.length === 0) return;
-        if (nowSec >= nextSharpAtSec) {
-          triggerSharpPulse();
-          scheduleNextSharp(nowSec);
-        }
-      }
-
 
       let blocks = [];
       let loopOrigin = performance.now();
@@ -563,15 +392,6 @@ function updatePaletteTimeline(nowMs) {
           return { hue, sat, lit };
         }
 
-        function pickDepth() {
-          // Discrete-ish depth planes for a stereogram-ish feel (far -> near)
-          const r = Math.random();
-          if (r < 0.28) return 0.20 + Math.random() * 0.06;  // far
-          if (r < 0.74) return 0.46 + Math.random() * 0.10;  // mid
-          if (r < 0.94) return 0.68 + Math.random() * 0.08;  // near
-          return 0.86 + Math.random() * 0.10;                // very near
-        }
-
         blocks = [];
 
         // Main slabs
@@ -597,24 +417,14 @@ function updatePaletteTimeline(nowMs) {
             marginN,
             phase: Math.random(),
             // a little faster overall (still loops perfectly)
-            speedInt: [1, 1, 2, 2, 3, 3][(Math.random() * 6) | 0],
-            depth: pickDepth(),
+            speedInt: [2, 2, 3, 3, 4, 5][(Math.random() * 6) | 0],
             blend: pickBlend(),
             hue: col.hue,
             sat: col.sat,
             lit: col.lit,
             alpha: 0.22 + Math.random() * 0.22,
             blurN: (1.4 + Math.random() * 6.6) / height, // reduced halo
-            wPulseAmp: 0.10 + Math.random() * 0.22,
-            wPulseK: [1, 2, 3][(Math.random() * 3) | 0],
-            wPulsePhase: Math.random(),
-            wobbleXn: 0.004 + Math.random() * 0.014,
-  wobbleYn: 0.001 + Math.random() * 0.009,
-  wobbleKx: [1, 2, 3][(Math.random() * 3) | 0],
-  wobbleKy: [1, 2][(Math.random() * 2) | 0],
-  wobblePhaseX: Math.random(),
-  wobblePhaseY: Math.random(),
-});
+          });
         }
 
         // Thin accents (adds complexity without "halo")
@@ -634,24 +444,14 @@ function updatePaletteTimeline(nowMs) {
             hN: h / height,
             marginN,
             phase: Math.random(),
-            speedInt: [1, 2, 2, 3, 3, 4][(Math.random() * 6) | 0],
-            depth: pickDepth(),
+            speedInt: [3, 4, 4, 5, 6][(Math.random() * 5) | 0],
             blend: Math.random() < 0.6 ? "multiply" : "screen",
             hue: col.hue,
             sat: clamp(col.sat + 10, 10, 100),
             lit: clamp(col.lit + 4, 6, 96),
             alpha: 0.18 + Math.random() * 0.18,
-            blurN: (0.8 + Math.random() * 3.2) / height,
-            wPulseAmp: 0.06 + Math.random() * 0.16,
-            wPulseK: [1, 2, 3][(Math.random() * 3) | 0],
-            wPulsePhase: Math.random(),
-            wobbleXn: 0.002 + Math.random() * 0.010,
-  wobbleYn: 0.001 + Math.random() * 0.006,
-  wobbleKx: [1, 2, 3][(Math.random() * 3) | 0],
-  wobbleKy: [1, 2][(Math.random() * 2) | 0],
-  wobblePhaseX: Math.random(),
-  wobblePhaseY: Math.random(),
-});
+            blurN: (0.8 + Math.random() * 3.2) / height
+          });
         }
 
         // A few hero slabs for big overlaps
@@ -670,29 +470,15 @@ function updatePaletteTimeline(nowMs) {
             marginN: marginN * 1.05,
             phase: Math.random(),
             speedInt: [1, 1, 2][(Math.random() * 3) | 0],
-            depth: pickDepth(),
             blend: Math.random() < 0.5 ? "overlay" : "screen",
             hue: col.hue,
             sat: clamp(col.sat + 8, 10, 100),
             lit: clamp(col.lit + 10, 10, 96),
             alpha: 0.12 + Math.random() * 0.10,
-            blurN: (1.2 + Math.random() * 6.0) / height,
-            wPulseAmp: 0.12 + Math.random() * 0.20,
-            wPulseK: [1, 2, 3][(Math.random() * 3) | 0],
-            wPulsePhase: Math.random(),
-  wobbleXn: 0.003 + Math.random() * 0.012,
-  wobbleYn: 0.001 + Math.random() * 0.010,
-  wobbleKx: [1, 2][(Math.random() * 2) | 0],
-  wobbleKy: [1, 2][(Math.random() * 2) | 0],
-  wobblePhaseX: Math.random(),
-  wobblePhaseY: Math.random(),
-});
+            blurN: (1.2 + Math.random() * 6.0) / height
+          });
         }
       }
-
-        // depth ordering: far -> near (stereogram-ish layering)
-        blocks.sort((a, b) => (a.depth ?? 0.5) - (b.depth ?? 0.5));
-
 
       function clearBackground(targetCtx, width, height) {
         targetCtx.globalCompositeOperation = "source-over";
@@ -714,7 +500,7 @@ function updatePaletteTimeline(nowMs) {
             function fadeBackground(targetCtx, width, height, tNorm) {
         // Clear a bit more each frame to reduce "halo" trails, but keep enough persistence for overlap patterns.
         targetCtx.globalCompositeOperation = "source-over";
-        targetCtx.globalAlpha = 0.20;
+        targetCtx.globalAlpha = 0.22;
         targetCtx.fillStyle = `hsl(${bgHue}, ${bgSat}%, ${bgLight}%)`;
         targetCtx.fillRect(0, 0, width, height);
 
@@ -753,129 +539,49 @@ function updatePaletteTimeline(nowMs) {
       }
 
             function drawBlock(targetCtx, b, width, height, tNorm) {
-        const TWOPI = Math.PI * 2;
-        const kx = b.wobbleKx || 1;
-        const ky = b.wobbleKy || 1;
-        const phx = b.wobblePhaseX || 0;
-        const phy = b.wobblePhaseY || 0;
-
-        // Straight trajectories (no wobble)
-        const wobbleX = 0;
-        const wobbleY = 0;
-
-        // de-normalize (with depth planes)
-        const z = clamp(b.depth ?? 0.55, 0, 1);
-
-        // Stable size (used for travel so movement timing stays unchanged),
-        // plus a very smooth size "breathing" applied only at draw time.
-        const baseH = b.hN * height;
-        const baseW = b.wN * width;
-        const depthScale = lerp(0.78, 1.22, z);
-
-        const hStable = baseH * depthScale;
-        const wStable = baseW * depthScale;
-
-        // keep center stable when scaling by depth
-        const yBase = b.yN * height - (hStable - baseH) * 0.5;
-
+        // de-normalize
+        const y = b.yN * height;
+        const h = b.hN * height;
+        const w = b.wN * width;
         const margin = (b.marginN ?? 0.1) * width;
 
-        // no camera drift (keep trajectories straight)
-        const camX = 0;
-        const camY = 0;
-        const par = lerp(0.35, 1.0, z);
-        const px = camX * par;
-        const py = camY * par;
-
         const u = (tNorm * b.speedInt + b.phase) % 1;
+        const travel = width + 2 * margin + w;
 
-        // Smooth acceleration/deceleration along a straight line (loop-safe)
-        const EASE_AMP = 0.08;
-        const uSmooth = u + (EASE_AMP * Math.sin(TWOPI * u)) / TWOPI;
-
-        // IMPORTANT: travel uses the STABLE width so the motion doesn't "feel" like it speeds up/slows down
-        // when the block breathes.
-        const travel = width + 2 * margin + wStable;
-
-        let xStable;
-        if (b.dir === 1) xStable = -margin - wStable + uSmooth * travel;
-        else xStable = width + margin - uSmooth * travel;
-
-        xStable += wobbleX;
-
-        // --- super smooth size breathing (purely visual; does not affect travel)
-        const k = b.wPulseK || 1;
-        const ph = b.wPulsePhase || 0;
-        const amp = clamp(b.wPulseAmp || 0, 0, 0.6);
-
-        const wPulse = 1 + amp * Math.sin(TWOPI * (u * k + ph));
-        const hPulse = 1 + (amp * 0.28) * Math.sin(TWOPI * (u * (k * 0.7 + 0.3) + ph * 1.37));
-
-        const w = Math.max(2, wStable * wPulse);
-        const h = Math.max(2, hStable * hPulse);
-
-        // keep center position stable while size changes
-        const xCenter = xStable + wStable * 0.5;
-        const yCenter = (yBase + wobbleY) + hStable * 0.5;
-
-        let x = xCenter - w * 0.5;
-        let y = yCenter - h * 0.5;
-
-        x += px;
-        y += py;
-        const col = currentBlockColor(b);
-        const baseHue = col.hue;
-        const baseSat = clamp(col.sat * lerp(0.78, 1.06, z), 0, 100);
-        const baseLit = clamp(col.lit * lerp(0.90, 1.10, z), 0, 100);
+        let x;
+        if (b.dir === 1) x = -margin - w + u * travel;
+        else x = width + margin - u * travel;
 
         // subtle shimmer, but keep it mostly "blocky"
         const shimmer = 0.5 + 0.5 * Math.sin((tNorm + b.phase) * Math.PI * 2);
-        const hueA = (baseHue + 14 * shimmer + 360) % 360;
-        const hueB = (baseHue - 18 * shimmer + 360) % 360;
+        const hueA = (b.hue + 14 * shimmer + 360) % 360;
+        const hueB = (b.hue - 18 * shimmer + 360) % 360;
 
         const g = targetCtx.createLinearGradient(x, 0, x + w, 0);
-        g.addColorStop(0, `hsla(${hueA}, ${baseSat}%, ${clamp(baseLit + 10, 4, 98)}%, 0)`);
-        g.addColorStop(0.10, `hsla(${hueA}, ${baseSat}%, ${baseLit}%, 1)`);
-        g.addColorStop(0.52, `hsla(${baseHue}, ${clamp(baseSat + 14, 0, 100)}%, ${clamp(baseLit + 6, 0, 100)}%, 1)`);
-        g.addColorStop(0.90, `hsla(${hueB}, ${baseSat}%, ${baseLit}%, 1)`);
-        g.addColorStop(1, `hsla(${hueB}, ${baseSat}%, ${clamp(baseLit + 10, 4, 98)}%, 0)`);
+        g.addColorStop(0, `hsla(${hueA}, ${b.sat}%, ${clamp(b.lit + 10, 4, 98)}%, 0)`);
+        g.addColorStop(0.10, `hsla(${hueA}, ${b.sat}%, ${b.lit}%, 1)`);
+        g.addColorStop(0.52, `hsla(${b.hue}, ${clamp(b.sat + 14, 0, 100)}%, ${clamp(b.lit + 6, 0, 100)}%, 1)`);
+        g.addColorStop(0.90, `hsla(${hueB}, ${b.sat}%, ${b.lit}%, 1)`);
+        g.addColorStop(1, `hsla(${hueB}, ${b.sat}%, ${clamp(b.lit + 10, 4, 98)}%, 0)`);
 
         targetCtx.save();
-        const depthAlpha = clamp(b.alpha * lerp(0.55, 1.18, z), 0, 1);
-        const outliney = (depthAlpha < 0.18) || (h < height * 0.022);
-        targetCtx.globalAlpha = depthAlpha;
+        targetCtx.globalAlpha = b.alpha;
         targetCtx.globalCompositeOperation = b.blend || "screen";
 
-        const blurBase = clamp((b.blurN || 0) * height, 0, 10);
-
-        // Momentary "snap to focus" (sharp pulse)
-        const sharpAge = b.sharpAge;
-        const sharpDur = b.sharpDur || 0;
-        const sharpT = (sharpAge != null && sharpDur > 0)
-          ? smoothstep(0, sharpDur * 0.28, sharpAge) * (1 - smoothstep(sharpDur * 0.72, sharpDur, sharpAge))
-          : 0;
-        const sharp = clamp(sharpT * (b.sharpStrength || 1), 0, 1);
-
-        const blur = outliney ? 0 : clamp((blurBase + (1 - z) * 4.5) * (1 - 0.92 * sharp), 0, 12);
-        targetCtx.shadowColor = `hsla(${baseHue}, ${baseSat}%, ${clamp(baseLit + 10, 0, 100)}%, ${0.38 * (1 - 0.65 * sharp)})`;
+        const blur = clamp((b.blurN || 0) * height, 0, 10);
+        targetCtx.shadowColor = `hsla(${b.hue}, ${b.sat}%, ${clamp(b.lit + 10, 0, 100)}%, 0.38)`;
         targetCtx.shadowBlur = blur;
-        targetCtx.shadowOffsetX = (z - 0.5) * 3.2;
-        targetCtx.shadowOffsetY = (0.5 - z) * 2.2;
+
         roundedRect(targetCtx, x, y, w, h, Math.min(18, h * 0.42));
         targetCtx.fillStyle = g;
         targetCtx.fill();
 
         // A crisp edge pass for pattern definition (no glow)
         targetCtx.shadowBlur = 0;
-
-        const edgeOp = outliney ? "source-over" : ((sharp > 0.02)
-          ? "source-over"
-          : ((b.blend === "multiply") ? "source-over" : "overlay"));
-
-        targetCtx.globalAlpha = outliney ? (depthAlpha * (0.78 + 0.18 * sharp)) : (depthAlpha * (0.32 + 0.58 * sharp));
-        targetCtx.globalCompositeOperation = outliney ? "source-over" : edgeOp;
-        targetCtx.strokeStyle = `hsla(${(baseHue + 40) % 360}, ${clamp(baseSat + 8, 0, 100)}%, ${clamp(baseLit + 14, 0, 100)}%, 0.9)`;
-        targetCtx.lineWidth = outliney ? Math.max(0.9, Math.min(2.2, h * 0.08)) : Math.max(0.6, h * (0.06 - 0.022 * sharp));
+        targetCtx.globalAlpha = b.alpha * 0.35;
+        targetCtx.globalCompositeOperation = (b.blend === "multiply") ? "source-over" : "overlay";
+        targetCtx.strokeStyle = `hsla(${(b.hue + 40) % 360}, ${clamp(b.sat + 8, 0, 100)}%, ${clamp(b.lit + 14, 0, 100)}%, 0.9)`;
+        targetCtx.lineWidth = Math.max(0.8, h * 0.06);
         roundedRect(targetCtx, x + 0.6, y + 0.6, w - 1.2, h - 1.2, Math.min(18, h * 0.42));
         targetCtx.stroke();
 
@@ -883,49 +589,13 @@ function updatePaletteTimeline(nowMs) {
       }
 
       function renderFrame(targetCtx, width, height, nowMs) {
-        const tNorm = (((nowMs - loopOrigin) / 1000) % LOOP_SECONDS) / LOOP_SECONDS;        // smooth background towards the active palette (no pops)
-        tickBackground(frameDt);
+        const tNorm = (((nowMs - loopOrigin) / 1000) % LOOP_SECONDS) / LOOP_SECONDS;
 
         fadeBackground(targetCtx, width, height, tNorm);
 
-        // occasional "snap to focus" moments
-        tickSharpPulses(nowMs / 1000);
-
-
         // draw from back to front for nicer layering
         for (let i = 0; i < blocks.length; i++) {
-          const b = blocks[i];
-
-          // detect wrap (when u jumps from ~1 to ~0), and assign a new color from the CURRENT palette
-          const u = (tNorm * b.speedInt + b.phase) % 1;
-          if (b._prevU != null && u < b._prevU) {
-            beginBlockColorTransition(b);
-          }
-          b._prevU = u;
-
-          // advance any in-progress color crossfade
-          if (b.colorMix != null && b.colorMix < 1) {
-            b.colorMix = Math.min(1, b.colorMix + frameDt * 2.6); // ~0.38s blend
-            if (b.colorMix >= 1 && b.hueTo != null) {
-              b.hue = b.hueTo; b.sat = b.satTo; b.lit = b.litTo;
-              b.hueTo = b.satTo = b.litTo = null;
-              b.hueFrom = b.satFrom = b.litFrom = null;
-              b.colorMix = null;
-            }
-          }
-          // advance any in-progress sharp pulse
-          if (b.sharpAge != null) {
-            b.sharpAge += frameDt;
-            if (b.sharpDur != null && b.sharpAge >= b.sharpDur) {
-              b.sharpAge = null;
-              b.sharpDur = null;
-              b.sharpStrength = null;
-            }
-          }
-
-
-
-          drawBlock(targetCtx, b, width, height, tNorm);
+          drawBlock(targetCtx, blocks[i], width, height, tNorm);
         }
 
         targetCtx.globalAlpha = 1;
@@ -938,11 +608,10 @@ function updatePaletteTimeline(nowMs) {
       let animationId = null;
       let isPaused = false;
       let lastT = performance.now();
-      let frameDt = 1 / 60;
 
       // For high-quality recording we render to an offscreen 1080×1920 canvas.
-      const REC_W = 2160;
-      const REC_H = 3840;
+      const REC_W = 1080;
+      const REC_H = 1920;
       const recCanvas = document.createElement("canvas");
       recCanvas.width = REC_W;
       recCanvas.height = REC_H;
@@ -961,12 +630,9 @@ function updatePaletteTimeline(nowMs) {
         if (reseedAll) {
           reseedPalette();
           updateSeedInUrl();
-          buildPalettePlaylist();
-          rotatePlaylistTo(paletteMode);
-          paletteClockOrigin = performance.now();
         }
 
-
+        updateTitlePill();
         makeBlocks(width, height);
         hardResetVisuals(width, height);
 
@@ -982,9 +648,6 @@ function updatePaletteTimeline(nowMs) {
           // clamp dt for stability
           const dt = Math.min(0.05, (now - lastT) / 1000);
           lastT = now;
-          frameDt = dt;
-          // palette tour (no movement changes)
-          updatePaletteTimeline(now);
 
           // advance loop origin only via now; dt is just to keep stable
           renderFrame(ctx, width, height, now);
@@ -1024,14 +687,14 @@ function updatePaletteTimeline(nowMs) {
       let isRecording = false;
       let stopTimer = null;
 
-      const btnReseed = document.getElementById("btnReseed");
-      const btnRecord = document.getElementById("btnRecord");
-      const btnStop = document.getElementById("btnStop");
-      const btnDownload = document.getElementById("btnDownload");
-      const statusEl = document.getElementById("status");
+      // const btnReseed = document.getElementById("btnReseed");
+      // const btnRecord = document.getElementById("btnRecord");
+      // const btnStop = document.getElementById("btnStop");
+      // const btnDownload = document.getElementById("btnDownload");
+      // const statusEl = document.getElementById("status");
 
       function setStatus(msg) {
-        if (statusEl) statusEl.textContent = msg;
+        statusEl.textContent = msg;
       }
 
       function pickBestMimeType() {
@@ -1054,11 +717,6 @@ function updatePaletteTimeline(nowMs) {
 
         // align to loop start for a perfect loop
         loopOrigin = performance.now();
-
-        // start palette tour clock from the current palette
-        buildPalettePlaylist();
-        rotatePlaylistTo(paletteMode);
-        paletteClockOrigin = performance.now();
 
         // reset visuals on both canvases
         const { width, height } = setupCanvas();
@@ -1101,15 +759,15 @@ function updatePaletteTimeline(nowMs) {
         mediaRecorder.start();
         isRecording = true;
 
-        btnRecord.disabled = true;
-        btnStop.disabled = false;
-        btnReseed.disabled = true;
+        // btnRecord.disabled = true;
+        // btnStop.disabled = false;
+        // btnReseed.disabled = true;
 
-        setStatus("Recording… (60s) rendering at 1080×1920");
+        setStatus("Recording… (18s) rendering at 1080×1920");
 
         stopTimer = setTimeout(() => {
           stopRecording();
-        }, RECORD_SECONDS * 1000 + 60);
+        }, LOOP_SECONDS * 1000 + 60);
       }
 
       function stopRecording() {
@@ -1118,9 +776,9 @@ function updatePaletteTimeline(nowMs) {
 
         if (stopTimer) { clearTimeout(stopTimer); stopTimer = null; }
 
-        btnRecord.disabled = false;
-        btnStop.disabled = true;
-        btnReseed.disabled = false;
+        // btnRecord.disabled = false;
+        // btnStop.disabled = true;
+        // btnReseed.disabled = false;
 
         try {
           mediaRecorder.stop();
@@ -1138,10 +796,10 @@ function updatePaletteTimeline(nowMs) {
         // then upscale to at least ~2160×3840 for social posts.
         const srcW = canvas.width;
         const srcH = canvas.height;
-
-        // Exact requested export size
-        const shotW = 2128;
-        const shotH = 3784;
+        const targetH = 3840;
+        const scale = clamp(targetH / srcH, 1, 4);
+        const shotW = Math.round(srcW * scale);
+        const shotH = Math.round(srcH * scale);
 
         const shotCanvas = document.createElement("canvas");
         shotCanvas.width = shotW;
@@ -1197,7 +855,9 @@ function updatePaletteTimeline(nowMs) {
       stage.addEventListener("click", onStageClick);
       stage.addEventListener("touchstart", onStageTouch, { passive: false });
 
-
+      // btnReseed.addEventListener("click", (e) => { e.preventDefault(); reseed(); });
+      // btnRecord.addEventListener("click", (e) => { e.preventDefault(); startRecording(); });
+      // btnStop.addEventListener("click", (e) => { e.preventDefault(); stopRecording(); });
 
       window.addEventListener("keydown", (e) => {
         if (e.key === " ") { e.preventDefault(); togglePause(); }
@@ -1214,14 +874,9 @@ window.addEventListener("resize", () => {
 
       // boot
       applyPaletteMode(0);
-      // start with current background as target
-      bgHueT = bgHue; bgSatT = bgSat; bgLightT = bgLight;
-
+      updateTitlePill();
       loopOrigin = performance.now();
       startAnimation(true);
-      buildPalettePlaylist();
-      rotatePlaylistTo(paletteMode);
-      paletteClockOrigin = performance.now();
     </script>
   </body>
 </html>
